@@ -17,3 +17,7 @@ langgraph
 faiss-cpu
 deepeval
 playwright
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-openai>=0.0.2
+deepeval>=0.21.0
