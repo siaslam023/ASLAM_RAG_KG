@@ -1,0 +1,9 @@
+# 1. Rebuild the image with the fixed Dockerfile
+docker build -t kg-rag-app .
+
+# 2. Remove old container instance
+docker stop kg-rag-container
+docker rm kg-rag-container
+
+# 3. Map Host Port 8502 -> Container Port 8501
+docker run -d -p 8502:8501 --env-file .env --name kg-rag-container kg-rag-appcd

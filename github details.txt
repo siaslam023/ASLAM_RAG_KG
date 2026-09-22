@@ -1,0 +1,33 @@
+…or create a new repository on the command line
+echo "# ASLAM_RAG_KG" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/siaslam023/ASLAM_RAG_KG.git
+git push -u origin main
+
+
+…or push an existing repository from the command line
+git remote add origin https://github.com/siaslam023/ASLAM_RAG_KG.git
+git branch -M main
+git push -u origin main
+
+
+https://github.com/siaslam023/ASLAM_RAG_KG.git
+
+# 1. Set your Git identity for this project
+git config user.email "siaslam023@gmail.com"
+git config user.name "Aslam Syed Ismail"
+
+# 2. Stage all files
+git add .
+
+# 3. Create the commit
+git commit -m "Initial RAG KG container build"
+
+# 4. Ensure main branch is active
+git branch -M main
+
+# 5. Push to GitHub
+git push -u origin main
