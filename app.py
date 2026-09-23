@@ -37,7 +37,14 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_experimental.graph_transformers import LLMGraphTransformer
-from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
+
+# Compatibility Imports for Neo4j Graph
+try:
+    from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
+except ImportError:
+    from langchain_community.graphs import Neo4jGraph
+    from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
+
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
@@ -74,38 +81,74 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.header("🔑 API Keys & Database Config")
 
-    if not os.getenv("OPENAI_API_KEY"):
-        api_key_input = st.text_input("Enter OpenAI API Key:", type="password")
-        if api_key_input:
-            os.environ["OPENAI_API_KEY"] = api_key_input
+    # 1. OpenAI API Key Handling
+    env_openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_key_input = st.text_input(
+        "Enter OpenAI API Key:",
+        type="password",
+        value="",
+        placeholder="•••••••••••••••• (Defaults to .env if blank)",
+        help="Leave blank to use OPENAI_API_KEY from environment variables."
+    )
+    final_openai_key = api_key_input.strip() if api_key_input.strip() else env_openai_key
+    if final_openai_key:
+        os.environ["OPENAI_API_KEY"] = final_openai_key
 
-    st.subheader("🌐 Neo4j AuraDB Connection")
-    # FIX: Default scheme set to neo4j+ssc:// to bypass Windows SSL cert errors
-    neo4j_uri = st.text_input(
+    st.subheader("🌐 Neo4j Connection")
+    
+    # 2. Neo4j Credentials Handling (Configured for neo4j+ssc://)
+    env_neo4j_uri = os.getenv("NEO4J_URI", "neo4j+ssc://eb0b7703.databases.neo4j.io").strip()
+    env_neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j").strip()
+    env_neo4j_password = os.getenv("NEO4J_PASSWORD", "7U_QgGzRPG55bESqYxPyXmbY-mdS5dqaRlwkbUIDvuI").strip()
+    env_neo4j_database = os.getenv("NEO4J_DATABASE", "neo4j").strip()
+
+    neo4j_uri_input = st.text_input(
         "Neo4j URI:",
-        value=os.getenv(
-            "NEO4J_URI", "neo4j+ssc://eb0b7703.databases.neo4j.io"
-        ),
+        value="",
+        placeholder=env_neo4j_uri,
+        help="Leave blank to default to server .env variable."
     )
-    neo4j_user = st.text_input(
-        "Neo4j Username:", value=os.getenv("NEO4J_USERNAME", "neo4j")
+    neo4j_user_input = st.text_input(
+        "Neo4j Username:",
+        value="",
+        placeholder=env_neo4j_user,
+        help="Leave blank to default to server .env variable."
     )
-    neo4j_pass = st.text_input(
+    neo4j_pass_input = st.text_input(
         "Neo4j Password:",
         type="password",
-        value=os.getenv("NEO4J_PASSWORD", ""),
+        value="",
+        placeholder="•••••••••••••••• (Defaults to .env if blank)",
+        help="Leave blank to default to server .env variable."
     )
 
+    # Resolve credentials and sanitize URI prefixes without changing neo4j+ssc:// protocol
+    raw_uri = neo4j_uri_input.strip() if neo4j_uri_input.strip() else env_neo4j_uri
+    if raw_uri.startswith("URI="):
+        raw_uri = raw_uri.replace("URI=", "")
+
+    final_neo4j_uri = raw_uri
+    final_neo4j_user = neo4j_user_input.strip() if neo4j_user_input.strip() else env_neo4j_user
+    final_neo4j_pass = neo4j_pass_input.strip() if neo4j_pass_input.strip() else env_neo4j_password
+    final_neo4j_db = env_neo4j_database
+
     if st.button("🔌 Connect to Neo4j Graph"):
-        try:
-            graph = Neo4jGraph(
-                url=neo4j_uri, username=neo4j_user, password=neo4j_pass
-            )
-            graph.refresh_schema()
-            st.session_state.neo4j_graph = graph
-            st.success("Successfully connected to Neo4j Database!")
-        except Exception as e:
-            st.error(f"Neo4j Connection Error: {e}")
+        if not final_neo4j_uri or not final_neo4j_pass:
+            st.error("❌ Missing Neo4j URI or Password. Check your .env file or input boxes.")
+        else:
+            try:
+                with st.spinner(f"Connecting to {final_neo4j_uri}..."):
+                    graph = Neo4jGraph(
+                        url=final_neo4j_uri,
+                        username=final_neo4j_user,
+                        password=final_neo4j_pass,
+                        database=final_neo4j_db
+                    )
+                    graph.refresh_schema()
+                    st.session_state.neo4j_graph = graph
+                    st.success(f"Successfully connected to Neo4j ({final_neo4j_uri})!")
+            except Exception as e:
+                st.error(f"Neo4j Connection Error: {e}")
 
 # ==========================================
 # 2. CACHED RESOURCE INITIALIZATION
