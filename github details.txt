@@ -31,3 +31,19 @@ git branch -M main
 
 # 5. Push to GitHub
 git push -u origin main
+
+
+#to protect and ensure the .env files are not pushed to github.
+
+# 1. Untrack .env from Git history (keeps the local file on your computer)
+git rm --cached .env
+
+# 2. Create a .gitignore file to ignore .env and virtual environments
+Set-Content -Path .gitignore -Value ".env`nmyenv/`nvenv/`n__pycache__/"
+
+# 3. Stage the changes
+git add .
+
+# 4. Amend the commit so .env is completely removed from Git
+git commit --amend -m "Initial RAG KG container build (untracked secrets)"
+
