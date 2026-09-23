@@ -56,7 +56,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# OPTION B: MASTER SITE AUTHENTICATION
+# MASTER SITE AUTHENTICATION (OPTION B)
 # ==========================================
 SITE_PASSWORD = os.getenv("APP_MASTER_PASSWORD", "Aslam@2026").strip()
 
@@ -106,23 +106,25 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.header("🔑 API Keys & Database Config")
 
-    # OPTION A: FORCE USER OPENAI API KEY
+    # OPTION A: STRICT USER OPENAI API KEY INPUT
     api_key_input = st.text_input(
         "Enter Your OpenAI API Key *:",
         type="password",
         value="",
         placeholder="sk-proj-••••••••••••••••",
-        help="Required to run LLM queries and guardrails."
+        help="Required to execute LLM queries, query-fusion, and guardrails."
     ).strip()
 
     if api_key_input:
         os.environ["OPENAI_API_KEY"] = api_key_input
     else:
+        # Clear environment memory if box is blank
+        os.environ.pop("OPENAI_API_KEY", None)
         st.warning("⚠️ OpenAI API Key is required to run queries.")
 
     st.subheader("🌐 Neo4j Connection")
     
-    # Neo4j User Inputs
+    # Neo4j Inputs
     env_neo4j_uri = os.getenv("NEO4J_URI", "neo4j+ssc://eb0b7703.databases.neo4j.io").strip()
     env_neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j").strip()
     env_neo4j_database = os.getenv("NEO4J_DATABASE", "neo4j").strip()
@@ -194,9 +196,10 @@ embeddings_model = load_embeddings()
 
 
 def get_llm():
-    if not os.getenv("OPENAI_API_KEY"):
+    # STRICT CHECK: Verifies sidebar text field directly
+    if not api_key_input:
         st.error(
-            "⚠️ Please enter your OpenAI API Key in the sidebar to execute operations."
+            "⚠️ OpenAI API Key missing! Please enter your OpenAI API Key in the sidebar to run queries."
         )
         st.stop()
     return load_llm()
