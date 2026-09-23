@@ -54,6 +54,31 @@ from langgraph.graph import END, StateGraph
 st.set_page_config(
     page_title="Aslam Agentic, KG RAG & DeepEval Chatbot", layout="wide"
 )
+
+# ==========================================
+# OPTION B: MASTER SITE AUTHENTICATION
+# ==========================================
+SITE_PASSWORD = os.getenv("APP_MASTER_PASSWORD", "Aslam@2026").strip()
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔒 Security Gateway")
+    st.subheader("Please authenticate to access the RAG Dashboard")
+    password_input = st.text_input("Enter Master Password:", type="password")
+    if st.button("Login"):
+        if password_input == SITE_PASSWORD:
+            st.session_state.authenticated = True
+            st.success("Access Granted!")
+            st.rerun()
+        else:
+            st.error("❌ Incorrect Password. Access Denied.")
+    st.stop()
+
+# ==========================================
+# MAIN DASHBOARD (ONCE AUTHENTICATED)
+# ==========================================
 st.title("🤖 Aslam Advanced Agentic + KG RAG + DeepEval Chatbot")
 st.caption(
     "Vector Search (FAISS + BM25) + Neo4j KG RAG + Input/Output Guardrails + DeepEval Metrics"
@@ -81,60 +106,55 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.header("🔑 API Keys & Database Config")
 
-    # 1. OpenAI API Key Handling
-    env_openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    # OPTION A: FORCE USER OPENAI API KEY
     api_key_input = st.text_input(
-        "Enter OpenAI API Key:",
+        "Enter Your OpenAI API Key *:",
         type="password",
         value="",
-        placeholder="•••••••••••••••• (Defaults to .env if blank)",
-        help="Leave blank to use OPENAI_API_KEY from environment variables."
-    )
-    final_openai_key = api_key_input.strip() if api_key_input.strip() else env_openai_key
-    if final_openai_key:
-        os.environ["OPENAI_API_KEY"] = final_openai_key
+        placeholder="sk-proj-••••••••••••••••",
+        help="Required to run LLM queries and guardrails."
+    ).strip()
+
+    if api_key_input:
+        os.environ["OPENAI_API_KEY"] = api_key_input
+    else:
+        st.warning("⚠️ OpenAI API Key is required to run queries.")
 
     st.subheader("🌐 Neo4j Connection")
     
-    # 2. Neo4j Credentials Handling (Configured for neo4j+ssc://)
+    # Neo4j User Inputs
     env_neo4j_uri = os.getenv("NEO4J_URI", "neo4j+ssc://eb0b7703.databases.neo4j.io").strip()
     env_neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j").strip()
-    env_neo4j_password = os.getenv("NEO4J_PASSWORD", "7U_QgGzRPG55bESqYxPyXmbY-mdS5dqaRlwkbUIDvuI").strip()
     env_neo4j_database = os.getenv("NEO4J_DATABASE", "neo4j").strip()
 
     neo4j_uri_input = st.text_input(
         "Neo4j URI:",
         value="",
         placeholder=env_neo4j_uri,
-        help="Leave blank to default to server .env variable."
-    )
+        help="Leave blank to default to server variable."
+    ).strip()
     neo4j_user_input = st.text_input(
         "Neo4j Username:",
         value="",
         placeholder=env_neo4j_user,
-        help="Leave blank to default to server .env variable."
-    )
+        help="Leave blank to default to server variable."
+    ).strip()
     neo4j_pass_input = st.text_input(
-        "Neo4j Password:",
+        "Neo4j Password *:",
         type="password",
         value="",
-        placeholder="•••••••••••••••• (Defaults to .env if blank)",
-        help="Leave blank to default to server .env variable."
-    )
+        placeholder="••••••••••••••••",
+        help="Enter Neo4j password to connect."
+    ).strip()
 
-    # Resolve credentials and sanitize URI prefixes without changing neo4j+ssc:// protocol
-    raw_uri = neo4j_uri_input.strip() if neo4j_uri_input.strip() else env_neo4j_uri
-    if raw_uri.startswith("URI="):
-        raw_uri = raw_uri.replace("URI=", "")
-
-    final_neo4j_uri = raw_uri
-    final_neo4j_user = neo4j_user_input.strip() if neo4j_user_input.strip() else env_neo4j_user
-    final_neo4j_pass = neo4j_pass_input.strip() if neo4j_pass_input.strip() else env_neo4j_password
+    final_neo4j_uri = neo4j_uri_input if neo4j_uri_input else env_neo4j_uri
+    final_neo4j_user = neo4j_user_input if neo4j_user_input else env_neo4j_user
+    final_neo4j_pass = neo4j_pass_input if neo4j_pass_input else os.getenv("NEO4J_PASSWORD", "").strip()
     final_neo4j_db = env_neo4j_database
 
     if st.button("🔌 Connect to Neo4j Graph"):
         if not final_neo4j_uri or not final_neo4j_pass:
-            st.error("❌ Missing Neo4j URI or Password. Check your .env file or input boxes.")
+            st.error("❌ Missing Neo4j URI or Password.")
         else:
             try:
                 with st.spinner(f"Connecting to {final_neo4j_uri}..."):
@@ -149,6 +169,11 @@ with st.sidebar:
                     st.success(f"Successfully connected to Neo4j ({final_neo4j_uri})!")
             except Exception as e:
                 st.error(f"Neo4j Connection Error: {e}")
+
+    st.divider()
+    if st.button("🔒 Logout"):
+        st.session_state.authenticated = False
+        st.rerun()
 
 # ==========================================
 # 2. CACHED RESOURCE INITIALIZATION
@@ -171,7 +196,7 @@ embeddings_model = load_embeddings()
 def get_llm():
     if not os.getenv("OPENAI_API_KEY"):
         st.error(
-            "Please provide an OpenAI API Key in the sidebar or environment variables."
+            "⚠️ Please enter your OpenAI API Key in the sidebar to execute operations."
         )
         st.stop()
     return load_llm()
